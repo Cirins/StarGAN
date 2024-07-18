@@ -83,6 +83,7 @@ class Solver(nn.Module):
 
         fetcher = InputFetcher(loaders.src, loaders.ref, args.latent_dim, 'train')
         fetcher_val = InputFetcher(loaders.val, None, args.latent_dim, 'val')
+        fetcher_val = InputFetcher(loaders.src, None, args.latent_dim, 'val')
         inputs_val = next(fetcher_val)
 
         # resume training if necessary
@@ -104,7 +105,7 @@ class Solver(nn.Module):
             z_trg, z_trg2 = inputs.z_trg, inputs.z_trg2
 
             # train the discriminator
-            d_loss, d_losses_latent = compute_d_loss(nets, args, x_real, y_org, y_trg, 
+            d_loss, d_losses_latent = compute_d_loss(nets, args, x_real, y_org, y_trg,
                                                      z_trg=z_trg, loss_type=args.loss_type)
             self._reset_grad()
             d_loss.backward()
@@ -216,8 +217,8 @@ def compute_d_loss(nets, args, x_real, y_org, y_trg, z_trg=None, x_ref=None, los
                            reg=loss_reg.item())
 
 
-def compute_g_loss(nets, step, args, domain_classifier_tr, x_real, y_org, y_trg, k_org, 
-                   z_trgs=None, x_refs=None, loss_type='minimax'):
+def compute_g_loss(nets, step, args, domain_classifier_tr, x_real, y_org, y_trg, 
+                   k_org, z_trgs=None, x_refs=None, loss_type='minimax'):
     assert (z_trgs is None) != (x_refs is None)
     if z_trgs is not None:
         z_trg, z_trg2 = z_trgs

@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 
 
-def get_data(class_idx):
+def get_data(class_idx, num_train_domains):
 
     # Load the dataset
     with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
@@ -12,7 +12,7 @@ def get_data(class_idx):
     
     x_ = x[(y == class_idx) & (k >= 4)]
     y_ = y[(y == class_idx) & (k >= 4)]
-    k_ = k[(y == class_idx) & (k >= 4)] - 4
+    k_ = k[(y == class_idx) & (k >= 4)] - num_train_domains
 
     return x_, y_, k_
 
@@ -31,7 +31,7 @@ def sample_timeseries(nets, args, mode):
     for src_class in classes:
 
         src_idx = classes_dict[src_class]
-        x_src, y_src, k_src = get_data(src_idx)
+        x_src, y_src, k_src = get_data(src_idx, args.num_train_domains)
 
         x_src = torch.tensor(x_src, dtype=torch.float32).to(device)
 

@@ -91,7 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--lambda_reg', type=float, default=1,
                         help='Weight for R1 regularization')
     parser.add_argument('--lambda_cyc', type=float, default=100,
-                        help='Weight for cyclic consistency loss')
+                        help='Weight for cycle consistency loss')
     parser.add_argument('--lambda_id', type=float, default=100,
                         help='Weight for identity loss')
     parser.add_argument('--lambda_sty', type=float, default=1,

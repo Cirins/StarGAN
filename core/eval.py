@@ -71,13 +71,13 @@ def calculate_metrics(nets, args, step, mode='latent'):
     for src_class in classes:
 
         src_idx = classes_dict[src_class]
-        x_src, y_src, k_src = get_data(src_idx)
+        x_src, y_src, k_src = get_data(src_idx, args.num_train_domains)
 
         x_src = torch.tensor(x_src, dtype=torch.float32).to(device)
 
         N = len(x_src)
         
-        trg_classes = [x for x in classes if x != src_class]
+        trg_classes = [clss for clss in classes if clss != src_class]
 
         syn_data = []
         syn_labels = []
@@ -92,7 +92,7 @@ def calculate_metrics(nets, args, step, mode='latent'):
                 z_trg = torch.randn(N, args.latent_dim).to(device)
                 s_trg = nets.mapping_network(z_trg, y_trg)
             else: # mode == 'reference'
-                x_ref = get_data(trg_idx)[0]
+                x_ref = get_data(trg_idx, args.num_train_domains)[0]
                 N2 = len(x_ref)
                 replace = N2 < N
                 idx = np.random.choice(N2, N, replace=replace)
@@ -119,7 +119,7 @@ def calculate_metrics(nets, args, step, mode='latent'):
     print('Total time taken:', time.time() - start_time, '\n')
 
 
-def get_data(class_idx):
+def get_data(class_idx, num_train_domains=4):
 
     # Load the dataset
     with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
@@ -127,12 +127,13 @@ def get_data(class_idx):
     
     x_ = x[(y == class_idx) & (k >= 4)]
     y_ = y[(y == class_idx) & (k >= 4)]
-    k_ = k[(y == class_idx) & (k >= 4)] - 4
+    k_ = k[(y == class_idx) & (k >= 4)] - num_train_domains
 
     return x_, y_, k_
 
 
-def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, trg_classes, step, mode, eval_dir, num_train_domains):
+def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, trg_classes, 
+                                    step, mode, eval_dir, num_train_domains):
 
     print('Calculating classification score for %s source...' % src_class)
 
@@ -149,7 +150,7 @@ def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, t
     for trg_class in trg_classes:
 
         trg_idx = classes_dict[trg_class]
-        x_trg, y_trg, k_trg = get_data(trg_idx)
+        x_trg, y_trg, k_trg = get_data(trg_idx, num_train_domains)
 
         trg_data.append(x_trg)
         trg_labels.append(y_trg)

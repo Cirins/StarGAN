@@ -70,7 +70,7 @@ class reference_dataset(data.Dataset):
 
   
 class eval_dataset(data.Dataset):
-    def __init__(self, domain=None):
+    def __init__(self, clss=None):
 
         # Load the dataset
         with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
@@ -84,10 +84,10 @@ class eval_dataset(data.Dataset):
         k = k[fs == 0]
         
         # Define train dataset
-        if domain is not None:
-            x_eval = x[(k >= 4) & (y == domain)]
-            y_eval = y[(k >= 4) & (y == domain)]
-            k_eval = k[(k >= 4) & (y == domain)]
+        if clss is not None:
+            x_eval = x[(k >= 4) & (y == clss)]
+            y_eval = y[(k >= 4) & (y == clss)]
+            k_eval = k[(k >= 4) & (y == clss)]
         else:
             x_eval = x[k >= 4]
             y_eval = y[k >= 4]
@@ -97,7 +97,7 @@ class eval_dataset(data.Dataset):
         self.y_eval = y_eval.astype(np.int64)
         self.k_eval = k_eval.astype(np.int64)
 
-        if domain is None:
+        if clss is None:
             print(f'X_eval shape is {self.X_eval.shape}')
 
             for i in range(len(classes)):
@@ -131,9 +131,9 @@ def get_train_loader(which='source', batch_size=8, num_workers=4, drop_last=Fals
     return dataloader
 
 
-def get_eval_loader(batch_size=32, num_workers=4, domain=None, drop_last=False):
+def get_eval_loader(batch_size=32, num_workers=4, clss=None, drop_last=False):
     
-    dataloader = data.DataLoader(dataset=eval_dataset(domain),
+    dataloader = data.DataLoader(dataset=eval_dataset(clss),
                                 batch_size=batch_size,
                                 shuffle=True,
                                 num_workers=num_workers,
