@@ -82,9 +82,10 @@ class Solver(nn.Module):
         optims = self.optims
 
         fetcher = InputFetcher(loaders.src, loaders.ref, args.latent_dim, 'train')
-        fetcher_val = InputFetcher(loaders.val, None, args.latent_dim, 'val')
-        fetcher_val = InputFetcher(loaders.src, None, args.latent_dim, 'val')
-        inputs_val = next(fetcher_val)
+        fetcher_val1 = InputFetcher(loaders.val, None, args.latent_dim, 'val')
+        fetcher_val2 = InputFetcher(loaders.src, None, args.latent_dim, 'val')
+        inputs_val1 = next(fetcher_val1)
+        inputs_val2 = next(fetcher_val2)
 
         # resume training if necessary
         if args.resume_iter > 0:
@@ -151,7 +152,8 @@ class Solver(nn.Module):
             # generate samples for debugging
             if (i+1) % args.sample_every == 0:
                 os.makedirs(args.sample_dir, exist_ok=True)
-                utils.debug_sample(nets_ema, args, inputs=inputs_val, step=i+1)
+                utils.debug_sample(nets_ema, args, inputs=inputs_val1, step=i+1)
+                utils.debug_sample(nets_ema, args, inputs=inputs_val2, step=i+2)
 
             # save model checkpoints
             if (i+1) % args.save_every == 0:
@@ -262,13 +264,12 @@ def compute_g_loss(nets, step, args, domain_classifier_tr, x_real, y_org, y_trg,
     k_fake = domain_classifier_tr(x_fake, y_trg)
     loss_dom = nn.CrossEntropyLoss()(k_fake, k_org)
 
+    
+    loss = loss_adv + args.lambda_sty * loss_sty - args.lambda_ds * loss_ds + args.lambda_cyc * loss_cyc + args.lambda_id * loss_id
+
     if step > args.dom_iter:
         print('Domain classification loss is applied...')
-        loss = loss_adv + args.lambda_sty * loss_sty - args.lambda_ds * loss_ds + \
-            args.lambda_cyc * loss_cyc + args.lambda_id * loss_id + args.lambda_dom * loss_dom
-    else:
-        loss = loss_adv + args.lambda_sty * loss_sty - args.lambda_ds * loss_ds + \
-            args.lambda_cyc * loss_cyc + args.lambda_id * loss_id
+        loss += args.lambda_dom * loss_dom
     
     return loss, Munch(adv=loss_adv.item(),
                        dom=loss_dom,
@@ -320,9 +321,9 @@ def adv_loss(logits, target, loss_type='minimax'):
             loss = torch.mean(logits)
     elif loss_type == 'lsgan':
         if target == 1:
-            loss = torch.mean((logits - 1) ** 2)
+            loss = torch.mean((logits - 1) ** 2) * 0.5
         else:
-            loss = torch.mean((logits) ** 2)
+            loss = torch.mean((logits) ** 2) * 0.5
     return loss
 
 

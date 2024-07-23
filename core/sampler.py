@@ -7,12 +7,12 @@ import numpy as np
 def get_data(class_idx, num_train_domains):
 
     # Load the dataset
-    with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
+    with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
         x, y, k = pickle.load(f)
     
-    x_ = x[(y == class_idx) & (k >= 4)]
-    y_ = y[(y == class_idx) & (k >= 4)]
-    k_ = k[(y == class_idx) & (k >= 4)] - num_train_domains
+    x_ = x[(y == class_idx) & (k >= num_train_domains)]
+    y_ = y[(y == class_idx) & (k >= num_train_domains)]
+    k_ = k[(y == class_idx) & (k >= num_train_domains)] - num_train_domains
 
     return x_, y_, k_
 
@@ -23,7 +23,7 @@ def sample_timeseries(nets, args, mode):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    classes = ['IR', 'Ball', 'OR_centred', 'OR_orthogonal', 'OR_opposite']
+    classes = ['WAL', 'RUN', 'CLD', 'CLU']
     classes_dict = {clss: i for i, clss in enumerate(classes)}
 
     syn_data = {}

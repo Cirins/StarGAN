@@ -248,7 +248,7 @@ class DomainClassifier(nn.Module):
         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.25)
-        self.fc_shared = nn.Linear(128 * 16, 100)
+        self.fc_shared = nn.Linear(128 * 8, 100)
 
         # Prepare class-specific branches as a single module with conditionally applied outputs
         self.fc_class_branches = nn.Linear(100, 50 * num_classes)

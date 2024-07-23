@@ -5,21 +5,23 @@ import torch
 from torch.utils import data
 
 
-classes = ['IR', 'Ball', 'OR_centred', 'OR_orthogonal', 'OR_opposite']
+classes = ['WAL', 'RUN', 'CLD', 'CLU']
 classes_dict = {i: clss for i, clss in enumerate(classes)}
+
+num_train_domains = 10
 
     
 class source_dataset(data.Dataset):
     def __init__(self):
 
         # Load the dataset
-        with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
+        with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
         
         # Define train dataset
-        x_train = x[k < 4]
-        y_train = y[k < 4]
-        k_train = k[k < 4]
+        x_train = x[k < num_train_domains]
+        y_train = y[k < num_train_domains]
+        k_train = k[k < num_train_domains]
 
         self.X_train = x_train.astype(np.float32)
         self.y_train = y_train.astype(np.int64)
@@ -41,12 +43,12 @@ class reference_dataset(data.Dataset):
     def __init__(self):
 
         # Load the dataset
-        with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
+        with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
         
         # Define train dataset
-        x_train = x[k < 4]
-        y_train = y[k < 4]
+        x_train = x[k < num_train_domains]
+        y_train = y[k < num_train_domains]
 
         self.X_train = x_train.astype(np.float32)
         self.y_train = y_train.astype(np.int64)
@@ -73,10 +75,10 @@ class eval_dataset(data.Dataset):
     def __init__(self, clss=None):
 
         # Load the dataset
-        with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
+        with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
 
-        with open('data/cwru_256_3ch_5cl_fs.pkl', 'rb') as f:
+        with open('data/realworld_128_3ch_4cl_fs.pkl', 'rb') as f:
             fs = pickle.load(f)
 
         x = x[fs == 0]
@@ -85,13 +87,13 @@ class eval_dataset(data.Dataset):
         
         # Define train dataset
         if clss is not None:
-            x_eval = x[(k >= 4) & (y == clss)]
-            y_eval = y[(k >= 4) & (y == clss)]
-            k_eval = k[(k >= 4) & (y == clss)]
+            x_eval = x[(k >= num_train_domains) & (y == clss)]
+            y_eval = y[(k >= num_train_domains) & (y == clss)]
+            k_eval = k[(k >= num_train_domains) & (y == clss)]
         else:
-            x_eval = x[k >= 4]
-            y_eval = y[k >= 4]
-            k_eval = k[k >= 4]
+            x_eval = x[k >= num_train_domains]
+            y_eval = y[k >= num_train_domains]
+            k_eval = k[k >= num_train_domains]
 
         self.X_eval = x_eval.astype(np.float32)
         self.y_eval = y_eval.astype(np.int64)

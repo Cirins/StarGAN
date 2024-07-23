@@ -34,7 +34,7 @@ def he_init(module):
 
 
 channels = ['DE', 'FE', 'BA']
-classes = ['IR', 'Ball', 'OR_centred', 'OR_orthogonal', 'OR_opposite']
+classes = ['WAL', 'RUN', 'CLD', 'CLU']
 
 def save_time_series(data, labels, ncol, filename):
     N = data.size(0)

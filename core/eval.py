@@ -28,7 +28,7 @@ class DomainClassifier(nn.Module):
         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.25)
-        self.fc_shared = nn.Linear(128 * 16, 100)
+        self.fc_shared = nn.Linear(128 * 8, 100)
 
         # Prepare class-specific branches as a single module with conditionally applied outputs
         self.fc_class_branches = nn.Linear(100, 50 * num_classes)
@@ -65,7 +65,7 @@ def calculate_metrics(nets, args, step, mode='latent'):
     domain_classifier_te.load_state_dict(torch.load(filename, map_location=device))
     domain_classifier_te = domain_classifier_te.to(device)
 
-    classes = ['IR', 'Ball', 'OR_centred', 'OR_orthogonal', 'OR_opposite']
+    classes = ['WAL', 'RUN', 'CLD', 'CLU']
     classes_dict = {clss: i for i, clss in enumerate(classes)}
     
     for src_class in classes:
@@ -122,12 +122,12 @@ def calculate_metrics(nets, args, step, mode='latent'):
 def get_data(class_idx, num_train_domains=4):
 
     # Load the dataset
-    with open('data/cwru_256_3ch_5cl.pkl', 'rb') as f:
+    with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
         x, y, k = pickle.load(f)
     
-    x_ = x[(y == class_idx) & (k >= 4)]
-    y_ = y[(y == class_idx) & (k >= 4)]
-    k_ = k[(y == class_idx) & (k >= 4)] - num_train_domains
+    x_ = x[(y == class_idx) & (k >= num_train_domains)]
+    y_ = y[(y == class_idx) & (k >= num_train_domains)]
+    k_ = k[(y == class_idx) & (k >= num_train_domains)] - num_train_domains
 
     return x_, y_, k_
 
@@ -140,7 +140,7 @@ def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, t
     syn_data = syn_data.cpu().detach().numpy()
     syn_labels = syn_labels.cpu().detach().numpy()
 
-    classes = ['IR', 'Ball', 'OR_centred', 'OR_orthogonal', 'OR_opposite']
+    classes = ['WAL', 'RUN', 'CLD', 'CLU']
     classes_dict = {clss: i for i, clss in enumerate(classes)}
 
     trg_data = []

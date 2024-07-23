@@ -68,15 +68,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # model arguments
-    parser.add_argument('--num_timesteps', type=int, default=256,
+    parser.add_argument('--num_timesteps', type=int, default=128,
                         help='Number of timesteps')
     parser.add_argument('--num_channels', type=int, default=3,
                         help='Number of channels')
-    parser.add_argument('--num_train_domains', type=int, default=4,
+    parser.add_argument('--num_train_domains', type=int, default=10,
                         help='Number of train domains')
-    parser.add_argument('--num_test_domains', type=int, default=4,
+    parser.add_argument('--num_test_domains', type=int, default=5,
                         help='Number of test domains')
-    parser.add_argument('--num_classes', type=int, default=5,
+    parser.add_argument('--num_classes', type=int, default=4,
                         help='Number of classes')
     parser.add_argument('--latent_dim', type=int, default=16,
                         help='Latent vector dimension')
@@ -90,9 +90,9 @@ if __name__ == '__main__':
     # weight for objective functions
     parser.add_argument('--lambda_reg', type=float, default=1,
                         help='Weight for R1 regularization')
-    parser.add_argument('--lambda_cyc', type=float, default=100,
+    parser.add_argument('--lambda_cyc', type=float, default=1,
                         help='Weight for cycle consistency loss')
-    parser.add_argument('--lambda_id', type=float, default=100,
+    parser.add_argument('--lambda_id', type=float, default=1,
                         help='Weight for identity loss')
     parser.add_argument('--lambda_sty', type=float, default=1,
                         help='Weight for style reconstruction loss')
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     # step size
     parser.add_argument('--print_every', type=int, default=100)
-    parser.add_argument('--sample_every', type=int, default=2000)
+    parser.add_argument('--sample_every', type=int, default=500)
     parser.add_argument('--save_every', type=int, default=2000)
     parser.add_argument('--eval_every', type=int, default=2000)
 
