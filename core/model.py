@@ -234,10 +234,10 @@ class Discriminator(nn.Module):
 
 
 class DomainClassifier(nn.Module):
-    def __init__(self, num_domains=4, num_classes=5):
+    def __init__(self, num_channels=3, num_domains=4, num_classes=5):
         super(DomainClassifier, self).__init__()
         # Shared layers as before
-        self.conv1 = nn.Conv1d(3, 16, kernel_size=5, stride=1, padding=2)
+        self.conv1 = nn.Conv1d(num_channels, 16, kernel_size=5, stride=1, padding=2)
         self.bn1 = nn.BatchNorm1d(16)
         self.conv2 = nn.Conv1d(16, 32, kernel_size=5, stride=1, padding=2)
         self.bn2 = nn.BatchNorm1d(32)
@@ -270,6 +270,37 @@ class DomainClassifier(nn.Module):
         # Final class-specific output
         final_outputs = self.fc_final(class_outputs.view(x.size(0), 50))
         return final_outputs.view(x.size(0), -1)
+
+
+class TRTSClassifier(nn.Module):
+    def __init__(self, num_channels=3, num_classes=4):
+        super(TRTSClassifier, self).__init__()
+        # Increase the convolution layers
+        self.conv1 = nn.Conv1d(num_channels, 16, kernel_size=5, stride=1, padding=2)
+        self.bn1 = nn.BatchNorm1d(16)
+        self.conv2 = nn.Conv1d(16, 32, kernel_size=5, stride=1, padding=2)
+        self.bn2 = nn.BatchNorm1d(32)
+        self.conv3 = nn.Conv1d(32, 64, kernel_size=5, stride=1, padding=2)
+        self.bn3 = nn.BatchNorm1d(64)
+        self.conv4 = nn.Conv1d(64, 128, kernel_size=5, stride=1, padding=2)
+        self.bn4 = nn.BatchNorm1d(128)
+        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.25)
+        # Adjust the fully connected layer
+        self.fc1 = nn.Linear(128 * 8, 100)
+        self.fc2 = nn.Linear(100, num_classes)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.bn1(self.conv1(x))))
+        x = self.pool(self.relu(self.bn2(self.conv2(x))))
+        x = self.pool(self.relu(self.bn3(self.conv3(x))))
+        x = self.pool(self.relu(self.bn4(self.conv4(x))))
+        x = x.view(x.size(0), -1)  # Flatten the output for the dense layer
+        x = self.dropout(x)
+        x = self.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
     
 
 
@@ -278,7 +309,8 @@ def build_model(args):
     mapping_network = nn.DataParallel(MappingNetwork(args.latent_dim, args.style_dim, args.num_classes))
     style_encoder = nn.DataParallel(StyleEncoder(args.num_timesteps, args.num_channels, args.style_dim, args.num_classes, args.max_conv_dim))
     discriminator = nn.DataParallel(Discriminator(args.num_timesteps, args.num_channels, args.num_classes, args.max_conv_dim))
-    domain_classifier = DomainClassifier(args.num_train_domains, args.num_classes)
+    domain_classifier = DomainClassifier(args.num_channels, args.num_train_domains, args.num_classes)
+    trts_classifier = TRTSClassifier(args.num_channels, args.num_classes)
     generator_ema = copy.deepcopy(generator)
     mapping_network_ema = copy.deepcopy(mapping_network)
     style_encoder_ema = copy.deepcopy(style_encoder)
@@ -291,4 +323,4 @@ def build_model(args):
                      mapping_network=mapping_network_ema,
                      style_encoder=style_encoder_ema)
 
-    return nets, nets_ema, domain_classifier
+    return nets, nets_ema, domain_classifier, trts_classifier

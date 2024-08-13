@@ -36,29 +36,41 @@ def main(args):
     if args.mode == 'train':
         assert args.loss_type in ['minimax', 'wgan', 'lsgan']
         assert args.n_critic == 1 or args.loss_type == 'wgan'
-        loaders = Munch(src=get_train_loader(which='source',
-                                            batch_size=args.batch_size,
-                                            num_workers=args.num_workers),
-                        ref=get_train_loader(which='reference',
-                                            batch_size=args.batch_size,
-                                            num_workers=args.num_workers),
-                        val=get_eval_loader(batch_size=args.val_batch_size,
+        loaders = Munch(src=get_train_loader(dataset_name=args.dataset_name, 
+                                             class_names=args.class_names,
+                                             num_train_domains=args.num_train_domains,
+                                             which='source', 
+                                             batch_size=args.batch_size, 
+                                             num_workers=args.num_workers),
+                        ref=get_train_loader(dataset_name=args.dataset_name, 
+                                             class_names=args.class_names, 
+                                             num_train_domains=args.num_train_domains,
+                                             which='reference', 
+                                             batch_size=args.batch_size, 
+                                             num_workers=args.num_workers),
+                        val=get_eval_loader(dataset_name=args.dataset_name,  
+                                            class_names=args.class_names,
+                                            num_train_domains=args.num_train_domains,
+                                            batch_size=args.val_batch_size, 
                                             num_workers=args.num_workers))
         solver.train(loaders)
 
     elif args.mode == 'sample':
         solver.sample()
 
-    elif args.mode == 'eval':
-        loaders = Munch(src=get_train_loader(which='source',
-                                            batch_size=args.batch_size,
-                                            num_workers=args.num_workers),
-                        ref=get_train_loader(which='reference',
-                                            batch_size=args.batch_size,
-                                            num_workers=args.num_workers),
-                        val=get_eval_loader(batch_size=args.val_batch_size,
-                                            num_workers=args.num_workers))
-        solver.evaluate(loaders)
+    # elif args.mode == 'eval':
+    #     loaders = Munch(src=get_train_loader(dataset_name=args.dataset_name, 
+    #                                          which='source', 
+    #                                          batch_size=args.batch_size, 
+    #                                          num_workers=args.num_workers),
+    #                     ref=get_train_loader(dataset_name=args.dataset_name, 
+    #                                          which='reference', 
+    #                                          batch_size=args.batch_size, 
+    #                                          num_workers=args.num_workers),
+    #                     val=get_eval_loader(dataset_name=args.dataset_name, 
+    #                                         batch_size=args.val_batch_size, 
+    #                                         num_workers=args.num_workers))
+    #     solver.evaluate(loaders)
 
     else:
         raise NotImplementedError
@@ -66,6 +78,14 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+
+    # dataset arguments
+    parser.add_argument('--dataset_name', type=str, default='realworld_128_3ch_4cl',
+                        choices=['realworld_128_3ch_4cl', 'cwru_256_3ch_5cl'], help='Dataset name')
+    parser.add_argument('--class_names', type=str, default=['WAL', 'RUN', 'CLD', 'CLU'],
+                        help='Class names for dataset')
+    parser.add_argument('--channel_names', type=str, default=['X', 'Y', 'Z'],
+                        help='Channel names for dataset')
 
     # model arguments
     parser.add_argument('--num_timesteps', type=int, default=128,
@@ -98,14 +118,22 @@ if __name__ == '__main__':
                         help='Weight for style reconstruction loss')
     parser.add_argument('--lambda_dom', type=float, default=1,
                         help='Weight for domain classification loss')
+    parser.add_argument('--lambda_trts', type=float, default=1,
+                        help='Weight for TRTS loss')
     parser.add_argument('--lambda_ds', type=float, default=1,
                         help='Weight for diversity sensitive loss')
     parser.add_argument('--lambda_gp', type=float, default=10,
                         help='Weight for gradient penalty')
     parser.add_argument('--ds_iter', type=int, default=100000,
                         help='Number of iterations to optimize diversity sensitive loss')
-    parser.add_argument('--dom_iter', type=int, default=100000,
-                        help='Number of iterations before domain classification loss is applied')
+    parser.add_argument('--dom_iter', type=int, default=0,
+                        help='Number of iterations to optimize domain loss')
+    parser.add_argument('--dom_start', type=int, default=0,
+                        help='Number of iterations to start domain loss')
+    parser.add_argument('--trts_iter', type=int, default=0,
+                        help='Number of iterations to optimize trts loss')
+    parser.add_argument('--trts_start', type=int, default=0,
+                        help='Number of iterations to start trts loss')
 
     # training arguments
     parser.add_argument('--loss_type', type=str, default='lsgan',

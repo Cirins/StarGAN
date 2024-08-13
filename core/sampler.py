@@ -4,15 +4,15 @@ import pickle
 import numpy as np
 
 
-def get_data(class_idx, num_train_domains):
+def get_data(dataset_name, class_idx, num_train_domains):
 
     # Load the dataset
-    with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
+    with open(f'data/{dataset_name}.pkl', 'rb') as f:
         x, y, k = pickle.load(f)
     
     x_ = x[(y == class_idx) & (k >= num_train_domains)]
     y_ = y[(y == class_idx) & (k >= num_train_domains)]
-    k_ = k[(y == class_idx) & (k >= num_train_domains)] - num_train_domains
+    k_ = k[(y == class_idx) & (k >= num_train_domains)]
 
     return x_, y_, k_
 
@@ -23,21 +23,20 @@ def sample_timeseries(nets, args, mode):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    classes = ['WAL', 'RUN', 'CLD', 'CLU']
-    classes_dict = {clss: i for i, clss in enumerate(classes)}
+    classes_dict = {clss: i for i, clss in enumerate(args.class_names)}
 
     syn_data = {}
     
-    for src_class in classes:
+    for src_class in args.class_names:
 
         src_idx = classes_dict[src_class]
-        x_src, y_src, k_src = get_data(src_idx, args.num_train_domains)
+        x_src, y_src, k_src = get_data(args.dataset_name, src_idx, args.num_train_domains)
 
         x_src = torch.tensor(x_src, dtype=torch.float32).to(device)
 
         N = len(x_src)
         
-        trg_classes = [x for x in classes if x != src_class]
+        trg_classes = [x for x in args.class_names if x != src_class]
 
         for trg_class in trg_classes:
 
@@ -48,7 +47,7 @@ def sample_timeseries(nets, args, mode):
                 z_trg = torch.randn(N, args.latent_dim).to(device)
                 s_trg = nets.mapping_network(z_trg, y_trg)
             else: # mode == 'reference'
-                x_ref = get_data(trg_idx)[0]
+                x_ref = get_data(args.dataset_name, trg_idx, args.num_train_domains)[0]
                 N2 = len(x_ref)
                 replace = N2 < N
                 idx = np.random.choice(N2, N, replace=replace)
@@ -56,7 +55,7 @@ def sample_timeseries(nets, args, mode):
                 s_trg = nets.style_encoder(x_ref, y_trg)
 
             x_fake = nets.generator(x_src, s_trg)
-            k_fake = k_src + args.num_train_domains
+            k_fake = k_src
 
             syn_data[(src_class, trg_class)] = (x_fake.cpu().detach().numpy(), y_trg.cpu().detach().numpy(), k_fake)
 

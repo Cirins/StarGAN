@@ -10,8 +10,6 @@ from sklearn.model_selection import KFold
 import lightgbm as lgb
 import sys
 
-seed = 2710
-
 
 class DomainClassifier(nn.Module):
     def __init__(self, num_domains=4, num_classes=5):
@@ -65,19 +63,18 @@ def calculate_metrics(nets, args, step, mode='latent'):
     domain_classifier_te.load_state_dict(torch.load(filename, map_location=device))
     domain_classifier_te = domain_classifier_te.to(device)
 
-    classes = ['WAL', 'RUN', 'CLD', 'CLU']
-    classes_dict = {clss: i for i, clss in enumerate(classes)}
+    classes_dict = {clss: i for i, clss in enumerate(args.class_names)}
     
-    for src_class in classes:
+    for src_class in args.class_names:
 
         src_idx = classes_dict[src_class]
-        x_src, y_src, k_src = get_data(src_idx, args.num_train_domains)
+        x_src, y_src, k_src = get_data(args.dataset_name, src_idx, args.num_train_domains)
 
         x_src = torch.tensor(x_src, dtype=torch.float32).to(device)
 
         N = len(x_src)
         
-        trg_classes = [clss for clss in classes if clss != src_class]
+        trg_classes = [clss for clss in args.class_names if clss != src_class]
 
         syn_data = []
         syn_labels = []
@@ -92,7 +89,7 @@ def calculate_metrics(nets, args, step, mode='latent'):
                 z_trg = torch.randn(N, args.latent_dim).to(device)
                 s_trg = nets.mapping_network(z_trg, y_trg)
             else: # mode == 'reference'
-                x_ref = get_data(trg_idx, args.num_train_domains)[0]
+                x_ref = get_data(args.dataset_name, trg_idx, args.num_train_domains)[0]
                 N2 = len(x_ref)
                 replace = N2 < N
                 idx = np.random.choice(N2, N, replace=replace)
@@ -113,16 +110,16 @@ def calculate_metrics(nets, args, step, mode='latent'):
         syn_labels = torch.cat(syn_labels, dim=0)
         syn_doms = np.concatenate(syn_doms, axis=0)
 
-        calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, trg_classes,
-                                        step, mode, args.eval_dir, args.num_train_domains)
+        calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, trg_classes, step, mode, 
+                                        args.eval_dir, args.class_names, args.dataset_name, args.num_train_domains)
 
     print('Total time taken:', time.time() - start_time, '\n')
 
 
-def get_data(class_idx, num_train_domains=4):
+def get_data(dataset_name, class_idx, num_train_domains):
 
     # Load the dataset
-    with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
+    with open(f'data/{dataset_name}.pkl', 'rb') as f:
         x, y, k = pickle.load(f)
     
     x_ = x[(y == class_idx) & (k >= num_train_domains)]
@@ -132,16 +129,15 @@ def get_data(class_idx, num_train_domains=4):
     return x_, y_, k_
 
 
-def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, trg_classes, 
-                                    step, mode, eval_dir, num_train_domains):
+def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, trg_classes, step, mode, 
+                                    eval_dir, class_names, dataset_name, num_train_domains):
 
     print('Calculating classification score for %s source...' % src_class)
 
     syn_data = syn_data.cpu().detach().numpy()
     syn_labels = syn_labels.cpu().detach().numpy()
 
-    classes = ['WAL', 'RUN', 'CLD', 'CLU']
-    classes_dict = {clss: i for i, clss in enumerate(classes)}
+    classes_dict = {clss: i for i, clss in enumerate(class_names)}
 
     trg_data = []
     trg_labels = []
@@ -150,7 +146,7 @@ def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, t
     for trg_class in trg_classes:
 
         trg_idx = classes_dict[trg_class]
-        x_trg, y_trg, k_trg = get_data(trg_idx, num_train_domains)
+        x_trg, y_trg, k_trg = get_data(dataset_name, trg_idx, num_train_domains)
 
         trg_data.append(x_trg)
         trg_labels.append(y_trg)
@@ -188,7 +184,7 @@ def calculate_classification_scores(syn_data, syn_labels, syn_doms, src_class, t
             'objective': 'multiclass' if num_classes > 2 else 'binary',
             'num_class': num_classes if num_classes > 2 else 1,
             'metric': 'multi_logloss' if num_classes > 2 else 'binary_logloss',
-            'seed': seed,
+            'seed': 2710,
             'verbosity': -1
         }
 

@@ -33,20 +33,18 @@ def he_init(module):
             nn.init.constant_(module.bias, 0)
 
 
-channels = ['DE', 'FE', 'BA']
-classes = ['WAL', 'RUN', 'CLD', 'CLU']
 
-def save_time_series(data, labels, ncol, filename):
+def save_time_series(data, labels, ncol, filename, class_names, channel_names):
     N = data.size(0)
     nrow = (N + ncol - 1) // ncol
     fig, axs = plt.subplots(nrow, ncol, figsize=(ncol * 5, nrow * 2.5))
     axs = axs.flatten()
     for idx in range(N):
         for i in range(data.size(1)):
-            axs[idx].plot(data[idx, i, :].cpu().numpy(), label=channels[i], linewidth=0.7)
+            axs[idx].plot(data[idx, i, :].cpu().numpy(), label=channel_names[i], linewidth=0.7)
         axs[idx].set_ylim(0, 1)
         axs[idx].axis('off')
-        axs[idx].set_title(f'{classes[labels[idx].item()]}')
+        axs[idx].set_title(f'{class_names[labels[idx].item()]}')
         if idx < ncol:
             axs[idx].legend()
     for idx in range(N, len(axs)):
@@ -72,7 +70,7 @@ def translate_and_reconstruct(nets, args, x_src, y_src, x_ref, y_ref, filename):
     x_concat = torch.cat(x_concat, dim=0)
     y_concat = torch.cat([y_src, y_ref, y_ref, y_src], dim=0)
     # save_pickle(x_concat, y_concat, args.sample_dir, 'cycle_consistency.pkl')
-    save_time_series(x_concat, y_concat, N, filename)
+    save_time_series(x_concat, y_concat, N, filename, args.class_names, args.channel_names)
     del x_concat
     del y_concat
 
@@ -93,7 +91,7 @@ def translate_using_latent(nets, args, x_src, y_src, y_trg_list, z_trg_list, fil
     x_concat = torch.cat(x_concat, dim=0)
     y_concat = torch.cat(y_concat, dim=0)
     # save_pickle(x_concat, y_concat, args.sample_dir, 'latent.pkl')
-    save_time_series(x_concat, y_concat, N, filename)
+    save_time_series(x_concat, y_concat, N, filename, args.class_names, args.channel_names)
     del x_concat
     del y_concat
 
@@ -114,7 +112,7 @@ def translate_using_reference(nets, args, x_src, y_src, x_ref, y_ref, filename):
 
     x_concat = torch.cat(x_concat, dim=0)
     y_concat = torch.cat(y_concat, dim=0)
-    save_time_series(x_concat, y_concat, N, filename)
+    save_time_series(x_concat, y_concat, N, filename, args.class_names, args.channel_names)
     del x_concat
     del y_concat
 

@@ -24,13 +24,15 @@ class Solver(nn.Module):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print('Running on', self.device)
 
-        self.nets, self.nets_ema, self.domain_classifier_tr = build_model(args)
+        self.nets, self.nets_ema, self.domain_classifier_tr, self.trts_classifier_tr = build_model(args)
         # below setattrs are to make networks be children of Solver, e.g., for self.to(self.device)
         for name, module in self.nets.items():
             utils.print_network(module, name)
             setattr(self, name, module)
         setattr(self, 'domain_classifier_tr', self.domain_classifier_tr)
         utils.print_network(self.domain_classifier_tr, 'domain_classifier_tr')
+        setattr(self, 'trts_classifier_tr', self.trts_classifier_tr)
+        utils.print_network(self.trts_classifier_tr, 'trts_classifier_tr')
         for name, module in self.nets_ema.items():
             setattr(self, name + '_ema', module)
 
@@ -38,6 +40,11 @@ class Solver(nn.Module):
         print('Loading the pretrained domain classifier...')
         self.domain_classifier_tr.load_state_dict(torch.load('core/pretrained_nets/domain_classifier_tr.ckpt', map_location=self.device))
         self.domain_classifier_tr.eval()
+
+        # Load the pretrained trts classifier
+        print('Loading the pretrained trts classifier...')
+        self.trts_classifier_tr.load_state_dict(torch.load('core/pretrained_nets/trts_classifier_tr.ckpt', map_location=self.device))
+        self.trts_classifier_tr.eval()
 
         if args.mode == 'train':
             self.optims = Munch()
@@ -58,7 +65,7 @@ class Solver(nn.Module):
 
         self.to(self.device)
         for name, network in self.named_children():
-            if ('ema' not in name) and ('domain_classifier_tr' not in name):
+            if ('ema' not in name) and ('domain_classifier_tr' not in name) and ('trts_classifier_tr' not in name):
                 print('Initializing %s...' % name)
                 network.apply(utils.he_init)
 
@@ -78,6 +85,7 @@ class Solver(nn.Module):
         args = self.args
         nets = self.nets
         domain_classifier_tr = self.domain_classifier_tr
+        trts_classifier_tr = self.trts_classifier_tr
         nets_ema = self.nets_ema
         optims = self.optims
 
@@ -94,6 +102,16 @@ class Solver(nn.Module):
         # calculate lambda_ds decay per iteration
         initial_lambda_ds = args.lambda_ds
         lambda_ds_decay = initial_lambda_ds / args.total_iters
+
+        # calculate lambda_dom increment per iteration
+        if args.dom_iter > 0:
+            final_lambda_dom = args.lambda_dom
+            lambda_dom_increment = final_lambda_dom / args.dom_iter
+
+        # calculate lambda_trts increment per iteration
+        if args.trts_iter > 0:
+            final_lambda_trts = args.lambda_trts
+            lambda_trts_increment = final_lambda_trts / args.trts_iter
 
         start_time = time.time()
 
@@ -120,16 +138,16 @@ class Solver(nn.Module):
 
             # train the generator
             if i % args.n_critic == 0:
-                g_loss, g_losses_latent = compute_g_loss(nets, i, args, domain_classifier_tr, x_real, y_org, y_trg, 
-                                                         k_org, z_trgs=[z_trg, z_trg2], loss_type=args.loss_type)
+                g_loss, g_losses_latent = compute_g_loss(nets, i, args, domain_classifier_tr, trts_classifier_tr,
+                                                         x_real, y_org, y_trg, k_org, z_trgs=[z_trg, z_trg2], loss_type=args.loss_type)
                 self._reset_grad()
                 g_loss.backward()
                 optims.generator.step()
                 optims.mapping_network.step()
                 optims.style_encoder.step()
 
-                g_loss, g_losses_ref = compute_g_loss(nets, i, args, domain_classifier_tr, x_real, y_org, y_trg, 
-                                                      k_org, x_refs=[x_ref, x_ref2], loss_type=args.loss_type)
+                g_loss, g_losses_ref = compute_g_loss(nets, i, args, domain_classifier_tr, trts_classifier_tr,
+                                                      x_real, y_org, y_trg, k_org, x_refs=[x_ref, x_ref2], loss_type=args.loss_type)
                 self._reset_grad()
                 g_loss.backward()
                 optims.generator.step()
@@ -142,6 +160,22 @@ class Solver(nn.Module):
             # decay weight for diversity sensitive loss
             if args.lambda_ds > 0:
                 args.lambda_ds = max(0, initial_lambda_ds - (i+1)*lambda_ds_decay)
+
+            # increment weight for domain classification loss
+            if i < args.dom_start:
+                args.lambda_dom = 0
+            elif args.dom_start <= i < args.dom_start + args.dom_iter:
+                args.lambda_dom = (i-args.dom_start)*lambda_dom_increment
+            else:
+                args.lambda_dom = final_lambda_dom if args.dom_iter > 0 else 0
+
+            # increment weight for TRTS loss
+            if i < args.trts_start:
+                args.lambda_trts = 0
+            elif args.trts_start <= i < args.trts_start + args.trts_iter:
+                args.lambda_trts = (i-args.trts_start)*lambda_trts_increment
+            else:
+                args.lambda_trts = final_lambda_trts if args.dom_iter > 0 else 0
 
             # print out log info
             if (i+1) % args.print_every == 0:
@@ -219,8 +253,8 @@ def compute_d_loss(nets, args, x_real, y_org, y_trg, z_trg=None, x_ref=None, los
                            reg=loss_reg.item())
 
 
-def compute_g_loss(nets, step, args, domain_classifier_tr, x_real, y_org, y_trg, 
-                   k_org, z_trgs=None, x_refs=None, loss_type='minimax'):
+def compute_g_loss(nets, step, args, domain_classifier_tr, trts_classifier_tr,
+                   x_real, y_org, y_trg, k_org, z_trgs=None, x_refs=None, loss_type='minimax'):
     assert (z_trgs is None) != (x_refs is None)
     if z_trgs is not None:
         z_trg, z_trg2 = z_trgs
@@ -264,15 +298,17 @@ def compute_g_loss(nets, step, args, domain_classifier_tr, x_real, y_org, y_trg,
     k_fake = domain_classifier_tr(x_fake, y_trg)
     loss_dom = nn.CrossEntropyLoss()(k_fake, k_org)
 
-    
-    loss = loss_adv + args.lambda_sty * loss_sty - args.lambda_ds * loss_ds + args.lambda_cyc * loss_cyc + args.lambda_id * loss_id
+    # TRTS loss
+    y_fake = trts_classifier_tr(x_fake)
+    loss_trts = nn.CrossEntropyLoss()(y_fake, y_trg)
 
-    if step > args.dom_iter:
-        print('Domain classification loss is applied...')
-        loss += args.lambda_dom * loss_dom
-    
+    # total loss
+    loss = loss_adv + args.lambda_cyc * loss_cyc + args.lambda_id * loss_id + args.lambda_sty * loss_sty \
+        - args.lambda_ds * loss_ds + args.lambda_dom * loss_dom + args.lambda_trts * loss_trts
+
     return loss, Munch(adv=loss_adv.item(),
-                       dom=loss_dom,
+                       dom=loss_dom.item(),
+                       trts=loss_trts.item(),
                        cyc=loss_cyc.item(),
                        id=loss_id.item(),
                        sty=loss_sty.item(),
@@ -350,6 +386,8 @@ def get_history(i, args, start_time, d_losses_latent, d_losses_ref, g_losses_lat
         for key, value in loss.items():
             all_losses[prefix + key] = value
     all_losses['G/lambda_ds'] = args.lambda_ds
+    all_losses['G/lambda_dom'] = args.lambda_dom
+    all_losses['G/lambda_trts'] = args.lambda_trts
     
     history_dict = {
         'iteration': i + 1,

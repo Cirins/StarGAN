@@ -4,18 +4,12 @@ import numpy as np
 import torch
 from torch.utils import data
 
-
-classes = ['WAL', 'RUN', 'CLD', 'CLU']
-classes_dict = {i: clss for i, clss in enumerate(classes)}
-
-num_train_domains = 10
-
     
 class source_dataset(data.Dataset):
-    def __init__(self):
+    def __init__(self, dataset_name, class_names, num_train_domains):
 
         # Load the dataset
-        with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
+        with open(f'data/{dataset_name}.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
         
         # Define train dataset
@@ -29,7 +23,8 @@ class source_dataset(data.Dataset):
 
         print(f'X_train shape is {self.X_train.shape}')
 
-        for i in range(len(classes)):
+        classes_dict = {i: clss for i, clss in enumerate(class_names)}
+        for i in range(len(class_names)):
             print(f'Number of {classes_dict[i]} samples: {len(y_train[y_train == i])}')
 
     def __len__(self):
@@ -40,10 +35,10 @@ class source_dataset(data.Dataset):
 
 
 class reference_dataset(data.Dataset):
-    def __init__(self):
+    def __init__(self, dataset_name, class_names, num_train_domains):
 
         # Load the dataset
-        with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
+        with open(f'data/{dataset_name}.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
         
         # Define train dataset
@@ -55,7 +50,7 @@ class reference_dataset(data.Dataset):
 
         # Prepare pairs
         self.paired_indices = []
-        for i in range(len(classes)):
+        for i in range(len(class_names)):
             indices = np.where(y_train == i)[0]
             paired_indices_for_class = []
             for index in indices:
@@ -72,13 +67,13 @@ class reference_dataset(data.Dataset):
 
   
 class eval_dataset(data.Dataset):
-    def __init__(self, clss=None):
+    def __init__(self, dataset_name, class_names, num_train_domains):
 
         # Load the dataset
-        with open('data/realworld_128_3ch_4cl.pkl', 'rb') as f:
+        with open(f'data/{dataset_name}.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
 
-        with open('data/realworld_128_3ch_4cl_fs.pkl', 'rb') as f:
+        with open(f'data/{dataset_name}_fs.pkl', 'rb') as f:
             fs = pickle.load(f)
 
         x = x[fs == 0]
@@ -86,24 +81,19 @@ class eval_dataset(data.Dataset):
         k = k[fs == 0]
         
         # Define train dataset
-        if clss is not None:
-            x_eval = x[(k >= num_train_domains) & (y == clss)]
-            y_eval = y[(k >= num_train_domains) & (y == clss)]
-            k_eval = k[(k >= num_train_domains) & (y == clss)]
-        else:
-            x_eval = x[k >= num_train_domains]
-            y_eval = y[k >= num_train_domains]
-            k_eval = k[k >= num_train_domains]
+        x_eval = x[k >= num_train_domains]
+        y_eval = y[k >= num_train_domains]
+        k_eval = k[k >= num_train_domains]
 
         self.X_eval = x_eval.astype(np.float32)
         self.y_eval = y_eval.astype(np.int64)
         self.k_eval = k_eval.astype(np.int64)
 
-        if clss is None:
-            print(f'X_eval shape is {self.X_eval.shape}')
-
-            for i in range(len(classes)):
-                print(f'Number of {classes_dict[i]} samples: {len(y_eval[y_eval == i])}')
+        print(f'X_eval shape is {self.X_eval.shape}')
+        
+        classes_dict = {i: clss for i, clss in enumerate(class_names)}
+        for i in range(len(class_names)):
+            print(f'Number of {classes_dict[i]} samples: {len(y_eval[y_eval == i])}')
 
     def __len__(self):
         return len(self.y_eval)
@@ -112,12 +102,17 @@ class eval_dataset(data.Dataset):
         return self.X_eval[idx], self.y_eval[idx], self.k_eval[idx]
 
 
-def get_train_loader(which='source', batch_size=8, num_workers=4, drop_last=False):
+def get_train_loader(dataset_name, class_names, num_train_domains, 
+                     which='source', batch_size=8, num_workers=4, drop_last=False):
 
     if which == 'source':
-        dataset = source_dataset()
+        dataset = source_dataset(dataset_name=dataset_name, 
+                                 class_names=class_names,
+                                 num_train_domains=num_train_domains)
     elif which == 'reference':
-        dataset = reference_dataset()
+        dataset = reference_dataset(dataset_name=dataset_name, 
+                                    class_names=class_names, 
+                                    num_train_domains=num_train_domains)
     else:
         raise NotImplementedError
     
@@ -133,9 +128,12 @@ def get_train_loader(which='source', batch_size=8, num_workers=4, drop_last=Fals
     return dataloader
 
 
-def get_eval_loader(batch_size=32, num_workers=4, clss=None, drop_last=False):
+def get_eval_loader(dataset_name, class_names, num_train_domains, 
+                    batch_size=32, num_workers=4, drop_last=False):
     
-    dataloader = data.DataLoader(dataset=eval_dataset(clss),
+    dataloader = data.DataLoader(dataset=eval_dataset(dataset_name=dataset_name, 
+                                                      class_names=class_names,
+                                                      num_train_domains=num_train_domains),
                                 batch_size=batch_size,
                                 shuffle=True,
                                 num_workers=num_workers,
