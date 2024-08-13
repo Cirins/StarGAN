@@ -6,16 +6,31 @@ from torch.utils import data
 
     
 class source_dataset(data.Dataset):
-    def __init__(self, dataset_name, class_names, num_train_domains):
-
+    def __init__(self, dataset_name, class_names, num_train_domains, finetune=False):
+        
         # Load the dataset
         with open(f'data/{dataset_name}.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
+
+        if finetune:
+            with open(f'data/{dataset_name}_fs.pkl', 'rb') as f:
+                fs = pickle.load(f)
+            
+            # Filter out the samples that are not used for finetuning
+            x = x[fs == 1]
+            y = y[fs == 1]
+            k = k[fs == 1]
         
-        # Define train dataset
-        x_train = x[k < num_train_domains]
-        y_train = y[k < num_train_domains]
-        k_train = k[k < num_train_domains]
+            # Define train dataset
+            x_train = x[k >= num_train_domains]
+            y_train = y[k >= num_train_domains]
+            k_train = k[k >= num_train_domains]
+
+        else:
+            # Define train dataset
+            x_train = x[k < num_train_domains]
+            y_train = y[k < num_train_domains]
+            k_train = k[k < num_train_domains]
 
         self.X_train = x_train.astype(np.float32)
         self.y_train = y_train.astype(np.int64)
@@ -35,15 +50,29 @@ class source_dataset(data.Dataset):
 
 
 class reference_dataset(data.Dataset):
-    def __init__(self, dataset_name, class_names, num_train_domains):
+    def __init__(self, dataset_name, class_names, num_train_domains, finetune=False):
 
         # Load the dataset
         with open(f'data/{dataset_name}.pkl', 'rb') as f:
             x, y, k = pickle.load(f)
         
-        # Define train dataset
-        x_train = x[k < num_train_domains]
-        y_train = y[k < num_train_domains]
+        if finetune:
+            with open(f'data/{dataset_name}_fs.pkl', 'rb') as f:
+                fs = pickle.load(f)
+            
+            # Filter out the samples that are not used for finetuning
+            x = x[fs == 1]
+            y = y[fs == 1]
+            k = k[fs == 1]
+        
+            # Define train dataset
+            x_train = x[k >= num_train_domains]
+            y_train = y[k >= num_train_domains]
+
+        else:
+            # Define train dataset
+            x_train = x[k < num_train_domains]
+            y_train = y[k < num_train_domains]
 
         self.X_train = x_train.astype(np.float32)
         self.y_train = y_train.astype(np.int64)
@@ -76,11 +105,12 @@ class eval_dataset(data.Dataset):
         with open(f'data/{dataset_name}_fs.pkl', 'rb') as f:
             fs = pickle.load(f)
 
+        # Filter out the samples that are used for finetuning
         x = x[fs == 0]
         y = y[fs == 0]
         k = k[fs == 0]
         
-        # Define train dataset
+        # Define eval dataset
         x_eval = x[k >= num_train_domains]
         y_eval = y[k >= num_train_domains]
         k_eval = k[k >= num_train_domains]
@@ -102,17 +132,19 @@ class eval_dataset(data.Dataset):
         return self.X_eval[idx], self.y_eval[idx], self.k_eval[idx]
 
 
-def get_train_loader(dataset_name, class_names, num_train_domains, 
-                     which='source', batch_size=8, num_workers=4, drop_last=False):
+def get_train_loader(dataset_name, class_names, num_train_domains, which='source', 
+                     batch_size=8, num_workers=4, drop_last=False, finetune=False):
 
     if which == 'source':
         dataset = source_dataset(dataset_name=dataset_name, 
                                  class_names=class_names,
-                                 num_train_domains=num_train_domains)
+                                 num_train_domains=num_train_domains,
+                                 finetune=finetune)
     elif which == 'reference':
         dataset = reference_dataset(dataset_name=dataset_name, 
                                     class_names=class_names, 
-                                    num_train_domains=num_train_domains)
+                                    num_train_domains=num_train_domains,
+                                    finetune=finetune)
     else:
         raise NotImplementedError
     

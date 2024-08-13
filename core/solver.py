@@ -46,7 +46,7 @@ class Solver(nn.Module):
         self.trts_classifier_tr.load_state_dict(torch.load('pretrained_nets/trts_classifier_tr.ckpt', map_location=self.device))
         self.trts_classifier_tr.eval()
 
-        if args.mode == 'train':
+        if args.mode == 'train' or args.mode == 'finetune':
             self.optims = Munch()
             for net in self.nets.keys():
                 print('Setting up optimizer for %s...' % net)

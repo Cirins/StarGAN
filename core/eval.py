@@ -121,6 +121,14 @@ def get_data(dataset_name, class_idx, num_train_domains):
     # Load the dataset
     with open(f'data/{dataset_name}.pkl', 'rb') as f:
         x, y, k = pickle.load(f)
+
+    with open(f'data/{dataset_name}_fs.pkl', 'rb') as f:
+        fs = pickle.load(f)
+
+    # Filter out the samples that are used for finetuning
+    x = x[fs == 0]
+    y = y[fs == 0]
+    k = k[fs == 0]
     
     x_ = x[(y == class_idx) & (k >= num_train_domains)]
     y_ = y[(y == class_idx) & (k >= num_train_domains)]

@@ -54,6 +54,30 @@ def main(args):
                                             batch_size=args.val_batch_size, 
                                             num_workers=args.num_workers))
         solver.train(loaders)
+    
+    elif args.mode == 'finetune':
+        assert args.loss_type in ['minimax', 'wgan', 'lsgan']
+        assert args.n_critic == 1 or args.loss_type == 'wgan'
+        loaders = Munch(src=get_train_loader(dataset_name=args.dataset_name, 
+                                             class_names=args.class_names,
+                                             num_train_domains=args.num_train_domains,
+                                             which='source', 
+                                             batch_size=args.batch_size, 
+                                             num_workers=args.num_workers,
+                                             finetune=True),
+                        ref=get_train_loader(dataset_name=args.dataset_name, 
+                                             class_names=args.class_names, 
+                                             num_train_domains=args.num_train_domains,
+                                             which='reference', 
+                                             batch_size=args.batch_size, 
+                                             num_workers=args.num_workers,
+                                             finetune=True),
+                        val=get_eval_loader(dataset_name=args.dataset_name,  
+                                            class_names=args.class_names,
+                                            num_train_domains=args.num_train_domains,
+                                            batch_size=args.val_batch_size, 
+                                            num_workers=args.num_workers))
+        solver.train(loaders)
 
     elif args.mode == 'sample':
         solver.sample()
@@ -161,7 +185,7 @@ if __name__ == '__main__':
 
     # misc
     parser.add_argument('--mode', type=str, required=True,
-                        choices=['train', 'sample', 'eval'],
+                        choices=['train', 'sample', 'eval', 'finetune'],
                         help='This argument is used in solver')
     parser.add_argument('--num_workers', type=int, default=2,
                         help='Number of workers used in DataLoader')
