@@ -12,10 +12,10 @@ import sys
 
 
 class DomainClassifier(nn.Module):
-    def __init__(self, num_domains=4, num_classes=5):
+    def __init__(self, num_timesteps=128, num_channels=3, num_domains=4, num_classes=5):
         super(DomainClassifier, self).__init__()
         # Shared layers as before
-        self.conv1 = nn.Conv1d(3, 16, kernel_size=5, stride=1, padding=2)
+        self.conv1 = nn.Conv1d(num_channels, 16, kernel_size=5, stride=1, padding=2)
         self.bn1 = nn.BatchNorm1d(16)
         self.conv2 = nn.Conv1d(16, 32, kernel_size=5, stride=1, padding=2)
         self.bn2 = nn.BatchNorm1d(32)
@@ -26,7 +26,7 @@ class DomainClassifier(nn.Module):
         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.25)
-        self.fc_shared = nn.Linear(128 * 8, 100)
+        self.fc_shared = nn.Linear(num_timesteps * 8, 100)
 
         # Prepare class-specific branches as a single module with conditionally applied outputs
         self.fc_class_branches = nn.Linear(100, 50 * num_classes)
@@ -58,8 +58,8 @@ def calculate_metrics(nets, args, step, mode='latent'):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    domain_classifier_te = DomainClassifier(num_domains=args.num_test_domains, num_classes=args.num_classes)
-    filename = 'core/pretrained_nets/domain_classifier_te.ckpt'
+    domain_classifier_te = DomainClassifier(args.num_timesteps, args.num_channels, args.num_test_domains, args.num_classes)
+    filename = 'pretrained_nets/domain_classifier_te.ckpt'
     domain_classifier_te.load_state_dict(torch.load(filename, map_location=device))
     domain_classifier_te = domain_classifier_te.to(device)
 

@@ -38,12 +38,12 @@ class Solver(nn.Module):
 
         # Load the pretrained domain classifier
         print('Loading the pretrained domain classifier...')
-        self.domain_classifier_tr.load_state_dict(torch.load('core/pretrained_nets/domain_classifier_tr.ckpt', map_location=self.device))
+        self.domain_classifier_tr.load_state_dict(torch.load('pretrained_nets/domain_classifier_tr.ckpt', map_location=self.device))
         self.domain_classifier_tr.eval()
 
         # Load the pretrained trts classifier
         print('Loading the pretrained trts classifier...')
-        self.trts_classifier_tr.load_state_dict(torch.load('core/pretrained_nets/trts_classifier_tr.ckpt', map_location=self.device))
+        self.trts_classifier_tr.load_state_dict(torch.load('pretrained_nets/trts_classifier_tr.ckpt', map_location=self.device))
         self.trts_classifier_tr.eval()
 
         if args.mode == 'train':
