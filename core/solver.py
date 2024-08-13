@@ -175,7 +175,7 @@ class Solver(nn.Module):
             elif args.trts_start <= i < args.trts_start + args.trts_iter:
                 args.lambda_trts = (i-args.trts_start)*lambda_trts_increment
             else:
-                args.lambda_trts = final_lambda_trts if args.dom_iter > 0 else 0
+                args.lambda_trts = final_lambda_trts if args.trts_iter > 0 else 0
 
             # print out log info
             if (i+1) % args.print_every == 0:

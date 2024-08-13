@@ -82,9 +82,9 @@ if __name__ == '__main__':
     # dataset arguments
     parser.add_argument('--dataset_name', type=str, default='realworld_128_3ch_4cl',
                         choices=['realworld_128_3ch_4cl', 'cwru_256_3ch_5cl'], help='Dataset name')
-    parser.add_argument('--class_names', type=str, default=['WAL', 'RUN', 'CLD', 'CLU'],
+    parser.add_argument('--class_names', type=str, nargs='+', default=['WAL', 'RUN', 'CLD', 'CLU'],
                         help='Class names for dataset')
-    parser.add_argument('--channel_names', type=str, default=['X', 'Y', 'Z'],
+    parser.add_argument('--channel_names', type=str, nargs='+', default=['X', 'Y', 'Z'],
                         help='Channel names for dataset')
 
     # model arguments
@@ -116,11 +116,11 @@ if __name__ == '__main__':
                         help='Weight for identity loss')
     parser.add_argument('--lambda_sty', type=float, default=1,
                         help='Weight for style reconstruction loss')
-    parser.add_argument('--lambda_dom', type=float, default=1,
+    parser.add_argument('--lambda_dom', type=float, default=0,
                         help='Weight for domain classification loss')
-    parser.add_argument('--lambda_trts', type=float, default=1,
+    parser.add_argument('--lambda_trts', type=float, default=0,
                         help='Weight for TRTS loss')
-    parser.add_argument('--lambda_ds', type=float, default=1,
+    parser.add_argument('--lambda_ds', type=float, default=0,
                         help='Weight for diversity sensitive loss')
     parser.add_argument('--lambda_gp', type=float, default=10,
                         help='Weight for gradient penalty')

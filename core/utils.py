@@ -46,7 +46,7 @@ def save_time_series(data, labels, ncol, filename, class_names, channel_names):
         axs[idx].axis('off')
         axs[idx].set_title(f'{class_names[labels[idx].item()]}')
         if idx < ncol:
-            axs[idx].legend()
+            axs[idx].legend(loc='lower left')
     for idx in range(N, len(axs)):
         axs[idx].axis('off')
     plt.tight_layout()
